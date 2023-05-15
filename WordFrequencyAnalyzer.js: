@@ -1,0 +1,75 @@
+import React, { useState } from 'react';
+import axios from 'axios';
+import { Bar } from 'react-chartjs-2';
+
+const WordFrequencyAnalyzer = () => {
+  const [histogramData, setHistogramData] = useState(null);
+
+  const fetchData = async () => {
+    try {
+      const response = await axios.get('https://www.terriblytinytales.com/test.txt');
+      const text = response.data;
+      const wordList = text.match(/\b(\w+)\b/g);
+      const wordFrequency = {};
+      wordList.forEach(word => {
+        wordFrequency[word] = (wordFrequency[word] || 0) + 1;
+      });
+      const sortedWords = Object.keys(wordFrequency).sort((a, b) => wordFrequency[b] - wordFrequency[a]);
+      const topWords = sortedWords.slice(0, 20);
+      const histogram = topWords.map(word => ({
+        word,
+        frequency: wordFrequency[word]
+      }));
+      setHistogramData(histogram);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    }
+  };
+
+  const exportCSV = () => {
+    if (!histogramData) return;
+
+    const csvContent = "data:text/csv;charset=utf-8,"
+      + histogramData.map(item => `${item.word},${item.frequency}`).join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', 'histogram.csv');
+    document.body.appendChild(link);
+    link.click();
+  };
+
+  return (
+    <div>
+      <button onClick={fetchData}>Submit</button>
+      {histogramData && (
+        <div>
+          <Bar
+            data={{
+              labels: histogramData.map(item => item.word),
+              datasets: [{
+                label: 'Word Frequency',
+                data: histogramData.map(item => item.frequency),
+                backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1,
+              }]
+            }}
+            options={{
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  stepSize: 1,
+                },
+              },
+            }}
+          />
+          <button onClick={exportCSV}>Export</button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default WordFrequencyAnalyzer;
